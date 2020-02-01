@@ -8,75 +8,73 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-//GET  /developers
-
-app.get("/developers", function (request, response) {
-  // request is an object with lots of info about the request
-  // response is an object which allows us to define what kind of response we want to send back
-  connection.query("SELECT * FROM Developers", function(err, data) {
-    response.status(200).json({
-      developers: [
-        { 
-          name: "Ena", 
-          available: true, 
-          dateJoined: "2020-01-09", 
-          skills: "HTML, CSS, React, NodeJS, AWS, Git", 
-          id: 1 
-        },
-        { 
-          name: "Sue", 
-          available: false, 
-          dateJoined: "2019-03-27", 
-          skills: "Agile, AWS, CSS", 
-          id: 2 
-        },
-        { 
-          name: "Karen", 
-          available: true, 
-          dateJoined: "2019-10-28", 
-          skills: "TDD, Git, HTML", 
-          id: 3 
-        }
-      ]
-    })
-  });
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: "developers"
 });
 
-//POST /developers?name=Hannah
+app.get("/developers", function (request, response) {
+  connection.query("SELECT * FROM Developers", function (err, data) {
+    if (err) {
+      response.status(500).json({
+        error: err
+      })
+    } else {
+      response.status(200).json({
+        developers: data
+
+      });
+    }
+  });
+});
 
 app.post("/developers", function(request, response) {
 
   const newDeveloper = request.body;
   
-    response.status(200).json({
-      message: `Received a request to add developer with name: ${newDeveloper.name} available: ${newDeveloper.available}, dateJoined: ${newDeveloper.dateJoined}, skills: ${newDeveloper.skills}`
-    });
-  });
+  connection.query("INSERT INTO Developers SET ?", [newDeveloper], function(err, data) {
+    if (err) {
+      response.status(500).json({
+        error: err
+      });
+    } else {
+      newDeveloper.developerId = data.insertId;
+      response.status(201).json(newDeveloper);
+    }
+  }); 
+});
 
-//PUT /developers
+app.put("/developers/:id", function (request, response) {
 
-app.put("/developers/:id", function(request, response) {
-
-/*
-// For sensitive data or larger pieces of data, I can use the request body
-{ name: "Fred", available: true, skills: "HTML and CSS" }
-*/
   const updatedDeveloper = request.body;
-  const id = request.params.id; 
+  const id = request.params.id;
 
-  response.status(200).json({
-    message: `Successfully updated developer ID ${id} with name: ${updatedDeveloper.name}, available: ${updatedDeveloper.available}, skills: ${updatedDeveloper.skills}`
+  connection.query("UPDATE Developers SET ? WHERE developerId=?", 
+  [updatedDeveloper, id], 
+  function (err) {
+    if (err) {
+      response.status(500).json({error: err});
+    } else {
+      response.sendStatus(200);
+    }
   });
 });
 
-//DELETE / developers
-app.delete("/developers/:id", function(request, response) {
+app.delete("/developers/:id", function (request, response) {
 
-    const id = request.params.id; 
-  
-    response.status(200).json({
-      message: `Successfully deleted developer ID ${id}`
-    });
+  const id = request.params.id;
+
+  connection.query("DELETE FROM Developers WHERE developerId=?", [id], function (err) {
+    if (err) {
+      response.status(500).json({
+        error: err
+      });
+    } else {
+      response.sendStatus(200);
+    }
   });
+});
 
 module.exports.app = serverlessHttp(app);

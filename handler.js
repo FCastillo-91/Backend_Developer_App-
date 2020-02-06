@@ -22,6 +22,11 @@ app.get("/developers", function (request, response) {
         error: err
       })
     } else {
+      const mapped = data.map(dev => {
+        dev.available = dev.available === 1 ? true : false;
+        return dev;
+      })
+      //Map so that i am only sending back true and false instead of 1 and 0
       response.status(200).json({
         developers: data
 
@@ -41,6 +46,8 @@ app.post("/developers", function(request, response) {
       });
     } else {
       newDeveloper.developerId = data.insertId;
+      newDeveloper.available = true;
+      newDeveloper.dateJoined = new Date(newDeveloper.dateJoined).toISOString();
       response.status(201).json(newDeveloper);
     }
   }); 
